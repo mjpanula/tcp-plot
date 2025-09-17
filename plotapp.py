@@ -3,6 +3,13 @@ import time
 import socket
 import pygame
 import random
+import struct
+
+points = []  # tämä on globaali lista johon socketti kirjoittaa
+             # ja jota käyttöliittymä lukee
+             # tästä aiheutuu nyt lukitus eli deadlock
+             # tai jonkunlainen race-condition
+             # tämä pitäisi nyt korjata jonon avulla
 
 def socket_thread(name):
     HOST = "0.0.0.0"  # Standard loopback interface address (localhost)
@@ -18,6 +25,11 @@ def socket_thread(name):
                 if not data:
                     break
                 print(f"Received {data!r}")
+                now = time.time()
+                for i in range(0, len(data), 4):
+                    if i + 4 <= len(data):
+                        value = struct.unpack('!f', data[i:i+4])[0]
+                        points.append((now, value))                
 
 if __name__ == "__main__":
     # käynnistä socketkommunikaatiosäie
@@ -37,20 +49,10 @@ if __name__ == "__main__":
     pygame.display.set_caption('Rolling X,Y Plot')
     clock = pygame.time.Clock()
 
-    points = []  # list of (timestamp, y)
     start_time = time.time()
 
     running = True
     while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    # Add new value
-                    now = time.time()
-                    y = random.uniform(-1, 1)
-                    points.append((now, y))
 
         # Remove points outside rolling window
         now = time.time()
